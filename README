@@ -1,0 +1,20 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1823
+
+Plugin for sending messages with the 'net send' MS command.
+It keeps the name of the users you send messages in a file and you can access them with the <tab> key.
+Navigation through menu (Plugin->NetSend->...) you can send messages, add users and remove them.
+You can also open the file with the user names and edit directly.
+
+Usage:
+----------
+You can use the menu in "Plugin->NetSend-> or:
+Insert ':NetSend user_name message to this user'
+    and user_name will reicive a message saying: 'myUser says: message to this user'
+Insert :NetSent <tab> to see the list of users you have stored.
+Insert :NetSent r<tab> to see all the users beginning by 'r'
+Insert: NetSendCC user1 user2 user3<ENTER>
+    to send the same message to several users at a time (or :NetSendBCC if you wish)
+
+To edit the list of users just open the file used in the g:NetSend_File. You can do it Typing :EditNetSend
+
+TODO: write the unix/linux version (smbclient -M MS-Windows-host-name OR talk)
