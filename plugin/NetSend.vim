@@ -1,6 +1,6 @@
 " File:  "NetSend.vim"
 " URL:  http://vim.sourceforge.net/script.php?script_id=
-" Version: 1.0
+" Version: 1.1
 " Last Modified: 12/03/2007
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for sending messages with the net send MS command
@@ -37,6 +37,11 @@
 "
 " To edit the list of users just open the file used in the g:NetSend_File. You
 " can do it Typing :EditNetSend
+"
+" History
+" -------
+"  1.1 Added a menu for sending messages and adding and removing users
+"  1.0 First version
 
 if exists('loaded_netsend')
     finish
@@ -47,7 +52,7 @@ let loaded_netsend=1
 let s:cpo_save = &cpo
 set cpo&vim
 
-" Choose the file for keeping the user names
+" To assign the file for keeping the user names
 if !exists('g:NetSend_File')
     if has('unix')
         let g:NetSend_File = $HOME . "/.netSend_Users"
@@ -56,12 +61,14 @@ if !exists('g:NetSend_File')
     endif
 endif
 
-" NetSend_LoadList
-" Load the NetSend list from the NetSend file
+" To load the NetSend list from the NetSend file
 function! s:NetSend_LoadList()
     " Read the list from the NetSend file.
     if filereadable(g:NetSend_File)
         let s:NetSend_Users=readfile(g:NetSend_File)
+		if len(s:NetSend_Users) == 0
+			let s:NetSend_Users=[expand('$USERNAME')]
+		endif
 	else
 		let s:NetSend_Users=[expand('$USERNAME')]
 		" Create the file if not exists
@@ -69,7 +76,8 @@ function! s:NetSend_LoadList()
     endif
 endfunction
 
-function! NetSendUsers(A,L,P)
+" Function for managing the user autocompletion
+function! s:NetSendUsers(A,L,P)
     call s:NetSend_LoadList()
 
 	call sort(s:NetSend_Users)
@@ -88,34 +96,73 @@ function! NetSendUsers(A,L,P)
 	return sub[:]
 endfunc
 
+" To add a user
+function! NetSendAdd()
+	call s:NetSend_LoadList()
+	let user=inputdialog("Please insert the user name to add to the users list", '', '')
+	if (count(s:NetSend_Users, user) == 0)
+		call add(s:NetSend_Users, user)
+		call sort(s:NetSend_Users)
+		call writefile(s:NetSend_Users, g:NetSend_File)
+		call s:NetSendMenu()
+	else
+		echo "User " . user . " is already in the list"
+	endif
+endfunc
+
+" To remove a user
+function! NetSendRemove(user)
+	call s:NetSend_LoadList()
+	call remove(s:NetSend_Users, index(s:NetSend_Users, a:user,0,1))
+	call writefile(s:NetSend_Users, g:NetSend_File)
+	call s:NetSendMenu()
+endfunc
+
+" Menu items
+function! s:NetSendMenu()
+	silent! aunmenu &Plugin.NetSend
+	call s:NetSend_LoadList()
+	for user in s:NetSend_Users
+		exe 'amenu &Plugin.NetSend.Send\ Message.' . user . " :NetSend " . user . "<cr>"
+		exe 'amenu &Plugin.NetSend.Manage\ Users.Remove.' . user . " :call NetSendRemove('" . user . "')<cr>"
+	endfor
+	amenu &Plugin.NetSend.Manage\ Users.Add  :call NetSendAdd()<cr>
+	amenu &Plugin.NetSend.Manage\ Users.Edit\ Users\ File :NetSendEdit<cr>
+endfunc
+
+" Main function (Send a message through NET SEND command)
 function! NetSend(to, ...)
-	let users=NetSendUsers(a:to,' ',' ')
+	let users=s:NetSendUsers(a:to,' ',' ')
 	if exists('g:NetSend_msg')
 		let msg=g:NetSend_msg
 	else
 		let msg=expand('$USERNAME') . " says:"
 	endif
-	if a:0 == 0
-		"let var=":silent ! net send " . a:to . " "
-		echo "You wrote no message to " . a:to
-		return
-	endif
 	if !count(users,a:to,1)
 		call add(s:NetSend_Users,a:to)
 		call sort(s:NetSend_Users)
 		call writefile(s:NetSend_Users, g:NetSend_File)
+		call s:NetSendMenu()
 		echo "User '".a:to."' has been added to your users list file"
 	endif
-	for s in a:000
-		let msg=msg . " " . s
-	endfor
+	if a:0 == 0
+		let msg=msg . " " . inputdialog("Please insert the text for " . a:to , '',' NO TEXT')
+	else
+		for s in a:000
+			let msg=msg . " " . s
+		endfor
+	endif
 	let var="silent ! net send ".a:to." ".msg
 	exe var
 endfunc
 
-com! -nargs=+ -bang -complete=customlist,NetSendUsers NetSend call NetSend(<f-args>)
-com! EditNetSend :execute 'e ' . g:NetSend_File
+" Assign commands to call the plugin
+command! -nargs=+ -bang -complete=customlist,s:NetSendUsers NetSend call NetSend(<f-args>)
+command! NetSendEdit :execute 'e ' . g:NetSend_File
+" Assign names and load the initial menu
+call s:NetSendMenu()
 
 " restore 'cpo'
 let &cpo = s:cpo_save
 unlet s:cpo_save
+
