@@ -1,17 +1,26 @@
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " File:  "NetSend.vim"
-" URL:  http://vim.sourceforge.net/script.php?script_id=
-" Version: 1.1
-" Last Modified: 12/03/2007
+" URL:  http://vim.sourceforge.net/script.php?script_id=1823
+" Version: 1.2
+" Last Modified: 14/03/2007
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for sending messages with the net send MS command
-"
-" TODO: write the unix/linux version (smbclient -M MS-Windows-host-name OR
-" talk)
+" GetLatestVimScripts: 1823 1 :AutoInstall: NetSend.vim
+" 
+" TODO: Send the same message to more than one user.
+" TODO: Optionally keep your messages and be able of re-send them to same or
+"		other user.
 "
 " Overview
 " --------
-" Plugin for sending messages with the net send MS command.
-" Only works in the MS platform because is where the 'NET SEND' command works.
+" Plugin for sending messages with the 'net send' MS command.
+" It keeps the name of the users you send messages in a file and you can
+" access them with the <tab> key.
+" Navigation through menu (Plugin->NetSend->...) you can send messages, add users
+" and remove them.
+" You can also open the file with the user names and edit directly.
+"
+" Note: only works in the MS platform because there is where the 'NET SEND' command works.
 "
 " Installation
 " ------------
@@ -19,12 +28,13 @@
 "    $HOME/vimfiles/plugin or the $VIM/vimfiles directory.  Refer to the
 "    ':help add-plugin', ':help add-global-plugin' and ':help runtimepath'
 "    topics for more details about Vim plugins.
-" 2. Set the NetSend_File Vim variable in the .vimrc file to the location of a
-"    file to store the user names.
-"    Example: let g:NetSend_File = $HOME ."/_netSend_Users"
-" 3. If you want a diferent message to be added to the message just add to
-"    your .vimrc: let g:NetSend_msg = "My initial message"
-" 4. Restart Vim.
+" 2. Customisation:
+" 		· Set the 'NetSend_File' variable in the .vimrc file to the location of a
+"		  file to store the user names.
+"			Example: let g:NetSend_File = $HOME ."/_netSend_Users"
+"		· If you want a diferent message to be added to the message just add to
+"		  your .vimrc: let g:NetSend_msg = "My initial message"
+" 3. Restart Vim.
 "
 " Usage
 " -----
@@ -33,15 +43,18 @@
 " 		 	'myUser says: message to this user'
 "
 " Insert :NetSent <tab> to see the list of users you have stored.
-" Insert :NetSent r<tab> to see all the users beginning by 'r'
+" Insert :NetSent r<tab> to see all the users beginning by 'r', etc
 "
 " To edit the list of users just open the file used in the g:NetSend_File. You
-" can do it Typing :EditNetSend
+" can do it Typing :EditNetSend or using the menu.
 "
 " History
 " -------
+"  1.2 Added compatibility with GetLatestVimScripts plugin.
+"	   Some litle bugs fixed.
 "  1.1 Added a menu for sending messages and adding and removing users
 "  1.0 First version
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 if exists('loaded_netsend')
     finish
@@ -131,33 +144,36 @@ function! s:NetSendMenu()
 endfunc
 
 " Main function (Send a message through NET SEND command)
-function! NetSend(to, ...)
-	let users=s:NetSendUsers(a:to,' ',' ')
-	if exists('g:NetSend_msg')
-		let msg=g:NetSend_msg
+function! NetSend(arg)
+	let to=split(a:arg)[0]
+	if len(split(a:arg))==1
+		let msg=inputdialog("Please insert the text for " . to , '','')
+		if (len(msg)==0)
+			echo "NET SEND to " .to. " ABORTED."
+			return 0
+		endif			
 	else
-		let msg=expand('$USERNAME') . " says:"
+		let msg=join(split(a:arg)[1:-1])
 	endif
-	if !count(users,a:to,1)
-		call add(s:NetSend_Users,a:to)
+	let users=s:NetSendUsers(to,' ',' ')
+	if exists('g:NetSend_msg')
+		let msg=g:NetSend_msg . msg
+	else
+		let msg=expand('$USERNAME') . " says:" . msg
+	endif
+	if !count(users,to,1)
+		call add(s:NetSend_Users,to)
 		call sort(s:NetSend_Users)
 		call writefile(s:NetSend_Users, g:NetSend_File)
 		call s:NetSendMenu()
-		echo "User '".a:to."' has been added to your users list file"
+		echo "User '".to."' has been added to your users list file"
 	endif
-	if a:0 == 0
-		let msg=msg . " " . inputdialog("Please insert the text for " . a:to , '',' NO TEXT')
-	else
-		for s in a:000
-			let msg=msg . " " . s
-		endfor
-	endif
-	let var="silent ! net send ".a:to." ".msg
+	let var="silent ! net send ".to." ".msg
 	exe var
 endfunc
 
 " Assign commands to call the plugin
-command! -nargs=+ -bang -complete=customlist,s:NetSendUsers NetSend call NetSend(<f-args>)
+command! -nargs=1 -bang -complete=customlist,s:NetSendUsers NetSend call NetSend(<q-args>)
 command! NetSendEdit :execute 'e ' . g:NetSend_File
 " Assign names and load the initial menu
 call s:NetSendMenu()
