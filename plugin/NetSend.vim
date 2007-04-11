@@ -1,13 +1,12 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " File:  "NetSend.vim"
-" URL:  http://vim.sourceforge.net/script.php?script_id=1823
-" Version: 1.2
+" URL:  http://vim.sourceforge.net/script.php?script_id=
+" Version: 1.3
 " Last Modified: 14/03/2007
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for sending messages with the net send MS command
 " GetLatestVimScripts: 1823 1 :AutoInstall: NetSend.vim
 " 
-" TODO: Send the same message to more than one user.
 " TODO: Optionally keep your messages and be able of re-send them to same or
 "		other user.
 "
@@ -34,7 +33,7 @@
 "			Example: let g:NetSend_File = $HOME ."/_netSend_Users"
 "		· If you want a diferent message to be added to the message just add to
 "		  your .vimrc: let g:NetSend_msg = "My initial message"
-" 3. Restart Vim.
+" 3. Restart Vim or :source /path/to/NetSend.vim
 "
 " Usage
 " -----
@@ -45,11 +44,17 @@
 " Insert :NetSent <tab> to see the list of users you have stored.
 " Insert :NetSent r<tab> to see all the users beginning by 'r', etc
 "
+" Insert :NetSendCC user1 user2 user3 user4
+" 		 And a box will appeare to sent a message to those users.
+" 		 Note: Use :NetSendBCC if you do not want to inform the users who are
+" 		 in copy.
+"
 " To edit the list of users just open the file used in the g:NetSend_File. You
 " can do it Typing :EditNetSend or using the menu.
 "
 " History
 " -------
+"  1.3 Send the same message to several users.
 "  1.2 Added compatibility with GetLatestVimScripts plugin.
 "	   Some litle bugs fixed.
 "  1.1 Added a menu for sending messages and adding and removing users
@@ -57,7 +62,7 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 if exists('loaded_netsend')
-    finish
+	finish
 endif
 let loaded_netsend=1
 
@@ -89,7 +94,7 @@ function! s:NetSend_LoadList()
     endif
 endfunction
 
-" Function for managing the user autocompletion
+" Managing the user autocompletion
 function! s:NetSendUsers(A,L,P)
     call s:NetSend_LoadList()
 
@@ -143,37 +148,83 @@ function! s:NetSendMenu()
 	amenu &Plugin.NetSend.Manage\ Users.Edit\ Users\ File :NetSendEdit<cr>
 endfunc
 
-" Main function (Send a message through NET SEND command)
-function! NetSend(arg)
-	let to=split(a:arg)[0]
-	if len(split(a:arg))==1
-		let msg=inputdialog("Please insert the text for " . to , '','')
-		if (len(msg)==0)
-			echo "NET SEND to " .to. " ABORTED."
-			return 0
-		endif			
-	else
-		let msg=join(split(a:arg)[1:-1])
+" Compose the message
+function! s:NetSendCompose(type,arg)
+	if (a:type==1)     " BCC type
+		if exists('g:NetSend_msg')
+			let s:msg=g:NetSend_msg . s:msg
+		else
+			let s:msg=expand('$USERNAME') . " says:" . s:msg
+		endif
+	elseif (a:type==2) " CC type
+		if exists('g:NetSend_msg')
+			let s:msg=g:NetSend_msg . s:msg . "    (To: " . a:arg . ")"
+		else
+			let s:msg=expand('$USERNAME') . " says:" . s:msg . "    (To: " . a:arg . ")"
+		endif
 	endif
-	let users=s:NetSendUsers(to,' ',' ')
-	if exists('g:NetSend_msg')
-		let msg=g:NetSend_msg . msg
-	else
-		let msg=expand('$USERNAME') . " says:" . msg
+endfunc
+
+" Prompt for the message
+function! s:NetSendPrompt()
+	let s:msg=inputdialog("Please insert the message text", '','')
+	if (len(s:msg)==0)
+		echo "NET SEND ABORTED."
+		return 0
 	endif
-	if !count(users,to,1)
-		call add(s:NetSend_Users,to)
+endfunc
+
+" Send the message
+function! s:NetSendSend()
+	if !count(s:users,s:to,1)
+		call add(s:NetSend_Users,s:to)
 		call sort(s:NetSend_Users)
 		call writefile(s:NetSend_Users, g:NetSend_File)
 		call s:NetSendMenu()
-		echo "User '".to."' has been added to your users list file"
+		echo "User '" . s:to . "' has been added to your users list file"
 	endif
-	let var="silent ! net send ".to." ".msg
+	let var="silent ! net send " . s:to . " ". s:msg
 	exe var
 endfunc
 
+" Main function (Send a message through NET SEND command --to a sigle user--)
+function! NetSend(arg)
+	let s:to=split(a:arg)[0]
+	if len(split(a:arg))==1
+		call s:NetSendPrompt()
+	else
+		let s:msg=join(split(a:arg)[1:-1])
+	endif
+	let s:users=s:NetSendUsers(s:to,' ',' ')
+	call s:NetSendCompose(1,"")
+	call s:NetSendSend()
+endfunc
+
+" Main function (Send a message through NET SEND command --multiuser CC--)
+function! NetSendCC(arg)
+	call s:NetSendPrompt()
+	call s:NetSendCompose(2,a:arg)
+	for s:to in split(a:arg)
+		let s:users=s:NetSendUsers(s:to,' ',' ')
+		call s:NetSendSend()
+	endfor
+endfunc
+
+" Main function (Send a message through NET SEND command --multiuser BCC--)
+function! NetSendBCC(arg)
+	call s:NetSendPrompt()
+	call s:NetSendCompose(1,"")
+	for s:to in split(a:arg)
+		let s:users=s:NetSendUsers(s:to,' ',' ')
+		call s:NetSendSend()
+	endfor
+endfunc
+
+
 " Assign commands to call the plugin
 command! -nargs=1 -bang -complete=customlist,s:NetSendUsers NetSend call NetSend(<q-args>)
+command! -nargs=1 -bang -complete=customlist,s:NetSendUsers NetSendCC call NetSendCC(<q-args>)
+command! -nargs=1 -bang -complete=customlist,s:NetSendUsers NetSendBCC call NetSendBCC(<q-args>)
 command! NetSendEdit :execute 'e ' . g:NetSend_File
 " Assign names and load the initial menu
 call s:NetSendMenu()
