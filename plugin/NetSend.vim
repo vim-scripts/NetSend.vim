@@ -1,7 +1,7 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " File:  "NetSend.vim"
 " URL:  http://vim.sourceforge.net/script.php?script_id=
-" Version: 1.3
+" Version: 1.4
 " Last Modified: 14/03/2007
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for sending messages with the net send MS command
@@ -54,6 +54,7 @@
 "
 " History
 " -------
+"  1.4 Fixed some errors associated to cancel the dialog.
 "  1.3 Send the same message to several users.
 "  1.2 Added compatibility with GetLatestVimScripts plugin.
 "	   Some litle bugs fixed.
@@ -158,9 +159,9 @@ function! s:NetSendCompose(type,arg)
 		endif
 	elseif (a:type==2) " CC type
 		if exists('g:NetSend_msg')
-			let s:msg=g:NetSend_msg . s:msg . "    (To: " . a:arg . ")"
+			let s:msg=g:NetSend_msg . s:msg . "    (To: " . substitute(a:arg, " ", ", ", "g") . ")"
 		else
-			let s:msg=expand('$USERNAME') . " says:" . s:msg . "    (To: " . a:arg . ")"
+			let s:msg=expand('$USERNAME') . " says:" . s:msg . "    (To: " . substitute(a:arg, " ", ", ", "g") . ")"
 		endif
 	endif
 endfunc
@@ -192,6 +193,9 @@ function! NetSend(arg)
 	let s:to=split(a:arg)[0]
 	if len(split(a:arg))==1
 		call s:NetSendPrompt()
+		if (len(s:msg)==0)
+			return 0
+		endif
 	else
 		let s:msg=join(split(a:arg)[1:-1])
 	endif
@@ -203,6 +207,9 @@ endfunc
 " Main function (Send a message through NET SEND command --multiuser CC--)
 function! NetSendCC(arg)
 	call s:NetSendPrompt()
+	if (len(s:msg)==0)
+		return 0
+	endif
 	call s:NetSendCompose(2,a:arg)
 	for s:to in split(a:arg)
 		let s:users=s:NetSendUsers(s:to,' ',' ')
@@ -213,6 +220,9 @@ endfunc
 " Main function (Send a message through NET SEND command --multiuser BCC--)
 function! NetSendBCC(arg)
 	call s:NetSendPrompt()
+	if (len(s:msg)==0)
+		return 0
+	endif
 	call s:NetSendCompose(1,"")
 	for s:to in split(a:arg)
 		let s:users=s:NetSendUsers(s:to,' ',' ')
@@ -233,3 +243,4 @@ call s:NetSendMenu()
 let &cpo = s:cpo_save
 unlet s:cpo_save
 
+" vim:ts=4
