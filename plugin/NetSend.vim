@@ -1,18 +1,16 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " File:  "NetSend.vim"
 " URL:  http://vim.sourceforge.net/script.php?script_id=
-" Version: 1.4
-" Last Modified: 14/03/2007
+" Version: 1.5
+" Last Modified: 08/05/2007
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for sending messages with the net send MS command
 " GetLatestVimScripts: 1823 1 :AutoInstall: NetSend.vim
 " 
-" TODO: Optionally keep your messages and be able of re-send them to same or
-"		other user.
 "
 " Overview
 " --------
-" Plugin for sending messages with the 'net send' MS command.
+" Pluging for sending messages with the 'net send' MS command.
 " It keeps the name of the users you send messages in a file and you can
 " access them with the <tab> key.
 " Navigation through menu (Plugin->NetSend->...) you can send messages, add users
@@ -31,21 +29,21 @@
 " 		· Set the 'NetSend_File' variable in the .vimrc file to the location of a
 "		  file to store the user names.
 "			Example: let g:NetSend_File = $HOME ."/_netSend_Users"
-"		· If you want a diferent message to be added to the message just add to
+"		· If you want a different message to be added to the message just add to
 "		  your .vimrc: let g:NetSend_msg = "My initial message"
 " 3. Restart Vim or :source /path/to/NetSend.vim
 "
 " Usage
 " -----
-" Insert :NetSend user_name message to this user
-" 		 and user_name will recive a message saying:
+" Insert :NetSend user name message to this user
+" 		 and user_name will receive a message saying:
 " 		 	'myUser says: message to this user'
 "
 " Insert :NetSent <tab> to see the list of users you have stored.
 " Insert :NetSent r<tab> to see all the users beginning by 'r', etc
 "
 " Insert :NetSendCC user1 user2 user3 user4
-" 		 And a box will appeare to sent a message to those users.
+" 		 And a box will appear to sent a message to those users.
 " 		 Note: Use :NetSendBCC if you do not want to inform the users who are
 " 		 in copy.
 "
@@ -54,10 +52,11 @@
 "
 " History
 " -------
+"  1.5 Fixed little bug: Now you can  use ! as part of the message.
 "  1.4 Fixed some errors associated to cancel the dialog.
 "  1.3 Send the same message to several users.
 "  1.2 Added compatibility with GetLatestVimScripts plugin.
-"	   Some litle bugs fixed.
+"	   Some little bugs fixed.
 "  1.1 Added a menu for sending messages and adding and removing users
 "  1.0 First version
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -153,15 +152,15 @@ endfunc
 function! s:NetSendCompose(type,arg)
 	if (a:type==1)     " BCC type
 		if exists('g:NetSend_msg')
-			let s:msg=g:NetSend_msg . s:msg
+			let s:msg=g:NetSend_msg . substitute(s:msg,'!','\\!','g')
 		else
-			let s:msg=expand('$USERNAME') . " says:" . s:msg
+			let s:msg=expand('$USERNAME') . " says:" . substitute(s:msg,'!','\\!','g')
 		endif
 	elseif (a:type==2) " CC type
 		if exists('g:NetSend_msg')
-			let s:msg=g:NetSend_msg . s:msg . "    (To: " . substitute(a:arg, " ", ", ", "g") . ")"
+			let s:msg=g:NetSend_msg . substitute(s:msg,'!','\\!','g') . "    (To: " . substitute(a:arg, " ", ", ", "g") . ")"
 		else
-			let s:msg=expand('$USERNAME') . " says:" . s:msg . "    (To: " . substitute(a:arg, " ", ", ", "g") . ")"
+			let s:msg=expand('$USERNAME') . " says:" . substitute(s:msg,'!','\\!','g') . "    (To: " . substitute(a:arg, " ", ", ", "g") . ")"
 		endif
 	endif
 endfunc
