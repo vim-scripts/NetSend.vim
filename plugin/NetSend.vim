@@ -1,16 +1,18 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " File:  "NetSend.vim"
 " URL:  http://vim.sourceforge.net/script.php?script_id=
-" Version: 1.5
+" Version: 1.6
 " Last Modified: 08/05/2007
 " Author: jmpicaza at gmail dot com
 " Description: Plugin for sending messages with the net send MS command
 " GetLatestVimScripts: 1823 1 :AutoInstall: NetSend.vim
 " 
+" TODO: Optionally keep your messages and be able of re-send them to same or
+"		other user.
 "
 " Overview
 " --------
-" Pluging for sending messages with the 'net send' MS command.
+" Plugin for sending messages with the 'net send' MS command.
 " It keeps the name of the users you send messages in a file and you can
 " access them with the <tab> key.
 " Navigation through menu (Plugin->NetSend->...) you can send messages, add users
@@ -29,21 +31,21 @@
 " 		· Set the 'NetSend_File' variable in the .vimrc file to the location of a
 "		  file to store the user names.
 "			Example: let g:NetSend_File = $HOME ."/_netSend_Users"
-"		· If you want a different message to be added to the message just add to
+"		· If you want a diferent message to be added to the message just add to
 "		  your .vimrc: let g:NetSend_msg = "My initial message"
 " 3. Restart Vim or :source /path/to/NetSend.vim
 "
 " Usage
 " -----
-" Insert :NetSend user name message to this user
-" 		 and user_name will receive a message saying:
+" Insert :NetSend user_name message to this user
+" 		 and user_name will recive a message saying:
 " 		 	'myUser says: message to this user'
 "
 " Insert :NetSent <tab> to see the list of users you have stored.
 " Insert :NetSent r<tab> to see all the users beginning by 'r', etc
 "
 " Insert :NetSendCC user1 user2 user3 user4
-" 		 And a box will appear to sent a message to those users.
+" 		 And a box will appeare to sent a message to those users.
 " 		 Note: Use :NetSendBCC if you do not want to inform the users who are
 " 		 in copy.
 "
@@ -52,11 +54,13 @@
 "
 " History
 " -------
-"  1.5 Fixed little bug: Now you can  use ! as part of the message.
+"  1.6 Analize the console output and informs you if there was an error sending the message.
+"      Keep all the sent messages during the current vim session.
+"  1.5 Fixed litle bug: Now you can  use ! as part of the message.
 "  1.4 Fixed some errors associated to cancel the dialog.
 "  1.3 Send the same message to several users.
 "  1.2 Added compatibility with GetLatestVimScripts plugin.
-"	   Some little bugs fixed.
+"	   Some litle bugs fixed.
 "  1.1 Added a menu for sending messages and adding and removing users
 "  1.0 First version
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -183,8 +187,15 @@ function! s:NetSendSend()
 		call s:NetSendMenu()
 		echo "User '" . s:to . "' has been added to your users list file"
 	endif
-	let var="silent ! net send " . s:to . " ". s:msg
-	exe var
+	let s:var="net send " . s:to . " ". s:msg
+	let s:status = substitute(strtrans(system(s:var)),'\^M\|\^@', '', "g")
+	if match(s:status,'\cerror') > -1 
+		echohl Error
+		echomsg s:msg . '. ' . strpart(s:status, 0, match(s:status,'\.'))
+		echohl None
+	else
+		echomsg s:status . ' -> ' . s:msg
+	endif
 endfunc
 
 " Main function (Send a message through NET SEND command --to a sigle user--)
